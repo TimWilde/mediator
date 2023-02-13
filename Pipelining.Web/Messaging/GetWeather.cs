@@ -1,4 +1,4 @@
-﻿namespace Pipelining.Web.Messaging;
+﻿namespace Mediator.Web.Messaging;
 
 using Mediation;
 

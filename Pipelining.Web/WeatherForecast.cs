@@ -1,4 +1,4 @@
-namespace Pipelining.Web;
+namespace Mediator.Web;
 
 public class WeatherForecast
 {

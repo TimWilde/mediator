@@ -1,7 +1,7 @@
 ﻿// ReSharper disable UnusedMember.Global
 // ReSharper disable UnusedParameter.Global
 
-namespace Pipelining.Web.Mediation;
+namespace Mediator.Web.Mediation;
 
 public interface IRequestHandler { }
 

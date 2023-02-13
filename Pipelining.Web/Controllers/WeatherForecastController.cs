@@ -1,11 +1,10 @@
-namespace Pipelining.Web.Controllers;
+namespace Mediator.Web.Controllers;
 
 using Mediation;
 using Messaging;
 using Microsoft.AspNetCore.Mvc;
 
-[ ApiController ]
-[ Route( "[controller]" ) ]
+[ ApiController, Route( "[controller]" ) ]
 public class WeatherForecastController: ControllerBase
 {
    private readonly IMediator mediator;
@@ -20,5 +19,16 @@ public class WeatherForecastController: ControllerBase
    {
       await mediator.DispatchAsync( new SetSomething() );
       return await mediator.DispatchAsync( new GetWeather() );
+   }
+
+   [ HttpGet( "/temps" ) ]
+   public IAsyncEnumerable<int> Temperatures( CancellationToken cancellationToken ) =>
+      mediator.CreateStream( new TemperatureStreamRequest(), cancellationToken );
+
+   [ HttpGet( "/notify" ) ]
+   public async Task<NoContentResult> Notify()
+   {
+      await mediator.PublishAsync( new DemoNotification() );
+      return NoContent();
    }
 }

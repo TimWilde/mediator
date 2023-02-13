@@ -1,6 +1,6 @@
 ﻿// ReSharper disable UnusedTypeParameter
 
-namespace Pipelining.Web.Mediation;
+namespace Mediator.Web.Mediation;
 
 public interface IRequest { }
 
