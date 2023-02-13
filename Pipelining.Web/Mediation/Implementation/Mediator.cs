@@ -33,7 +33,7 @@ public class Mediator: IMediator
       Type closedHandlerType = StreamHandlerType.MakeGenericType( genericTypes.ToArray() );
       MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
-      if (handleMethod is null)
+      if ( handleMethod is null )
          throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, request.GetType() );
 
       object streamHandler = services.GetRequiredService( closedHandlerType );
@@ -43,12 +43,10 @@ public class Mediator: IMediator
 
    public Task PublishAsync( IRequest notification )
    {
-      List<Type> genericTypes = new() { notification.GetType() };
-
-      Type closedHandlerType = NotificationHandlerType.MakeGenericType( genericTypes.ToArray() );
+      Type closedHandlerType = NotificationHandlerType.MakeGenericType( notification.GetType() );
       MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
-      if (handleMethod is null)
+      if ( handleMethod is null )
          throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, notification.GetType() );
 
       IEnumerable<object?> notificationHandlers = services.GetServices( closedHandlerType );
@@ -64,13 +62,13 @@ public class Mediator: IMediator
    {
       List<Type> genericTypes = new() { message.GetType() };
 
-      if (responseType is not null)
+      if ( responseType is not null )
          genericTypes.Add( responseType );
 
       Type closedHandlerType = openHandlerType.MakeGenericType( genericTypes.ToArray() );
       MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
-      if (handleMethod is null)
+      if ( handleMethod is null )
          throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
 
       object requestHandler = services.GetRequiredService( closedHandlerType );

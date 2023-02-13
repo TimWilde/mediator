@@ -24,7 +24,7 @@ WebApplication app = builder.Build();
 
 // -- Configure the request pipeline.
 
-if (app.Environment.IsDevelopment())
+if ( app.Environment.IsDevelopment() )
 {
    app.UseSwagger();
    app.UseSwaggerUI();
