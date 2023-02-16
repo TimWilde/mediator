@@ -10,7 +10,7 @@ public static class MediationRegistrationExtensions
    {
       services.TryAddSingleton<IMediator, Mediator>();
 
-      configure?.Invoke( new MediatorConfiguration( services ) );
+      configure( new MediatorConfiguration( services ) );
 
       return services;
    }

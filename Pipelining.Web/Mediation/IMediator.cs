@@ -39,5 +39,6 @@ public interface IMediator
    ///    <para>Notification handlers are called in parallel and in an indeterminate order</para>
    ///    <para>All notification handlers will complete before the call returns</para>
    /// </remarks>
-   Task PublishAsync( IRequest notification );
+   /// <typeparam name="TNotification">The type of the message that will be published to all subscribers</typeparam>
+   Task PublishAsync<TNotification>( TNotification notification );
 }

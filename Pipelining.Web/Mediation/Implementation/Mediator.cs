@@ -41,23 +41,25 @@ public class Mediator: IMediator
       return (IAsyncEnumerable<TOut>) handleMethod.Invoke( streamHandler, new object[] { request, cancellationToken } )!;
    }
 
-   public Task PublishAsync( IRequest notification )
+   public Task PublishAsync<TNotification>( TNotification notification )
    {
-      Type closedHandlerType = NotificationHandlerType.MakeGenericType( notification.GetType() );
+      Type notificationType = typeof(TNotification);
+      Type closedHandlerType = NotificationHandlerType.MakeGenericType( notificationType );
       MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
       if ( handleMethod is null )
-         throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, notification.GetType() );
+         throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, notificationType );
 
       IEnumerable<object?> notificationHandlers = services.GetServices( closedHandlerType );
 
       List<Task> handlerTasks = notificationHandlers.Where( handler => handler is not null )
-                                                    .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification } )! )
+                                                    .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification! } )! )
                                                     .ToList();
 
       return Task.WhenAll( handlerTasks );
    }
 
+   // Executes handlers that either match an Action<in Tin> or Func<in TIn, out TOut> signature.
    private Task ExecuteHandler( Type openHandlerType, IRequest message, Type? responseType = null )
    {
       List<Type> genericTypes = new() { message.GetType() };
