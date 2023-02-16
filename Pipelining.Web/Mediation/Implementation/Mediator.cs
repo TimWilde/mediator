@@ -1,80 +1,94 @@
 ﻿namespace Mediator.Web.Mediation.Implementation;
 
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
 
 [ DebuggerStepThrough ]
 public class Mediator: IMediator
 {
-   public static readonly Type FunctionHandlerType = typeof( IRequestHandler<,> );
-   public static readonly Type ActionHandlerType = typeof( IRequestHandler<> );
-   public static readonly Type StreamHandlerType = typeof( IStreamHandler<,> );
-   public static readonly Type NotificationHandlerType = typeof( INotificationHandler<> );
+    public static readonly Type FunctionHandlerType = typeof( IRequestHandler<,> );
+    public static readonly Type ActionHandlerType = typeof( IRequestHandler<> );
+    public static readonly Type StreamHandlerType = typeof( IStreamHandler<,> );
+    public static readonly Type NotificationHandlerType = typeof( INotificationHandler<> );
 
-   private static readonly string Handle = nameof(Handle);
+    private static readonly string Handle = nameof( Handle );
 
-   private readonly IServiceProvider services;
+    private readonly IServiceProvider services;
+    private readonly ILogger<Mediator> logger;
 
-   public Mediator( IServiceProvider services )
-   {
-      this.services = services;
-   }
+    public Mediator( IServiceProvider services, ILogger<Mediator> logger )
+    {
+        this.services = services;
+        this.logger = logger;
+    }
 
-   public Task<TOut> DispatchAsync<TOut>( IRequest<TOut> message ) =>
-      (Task<TOut>) ExecuteHandler( FunctionHandlerType, message, typeof( TOut ) );
+    public Task DispatchAsync( IRequest message )
+    {
+        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( ActionHandlerType, message );
 
-   public Task DispatchAsync( IRequest message ) =>
-      ExecuteHandler( ActionHandlerType, message );
+        return (Task) handleMethod.Invoke( handler, new object[] { message } )!;
+    }
 
-   public IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> request, CancellationToken cancellationToken )
-   {
-      List<Type> genericTypes = new() { request.GetType(), typeof( TOut ) };
+    public Task<TOut> DispatchAsync<TOut>( IRequest<TOut> message )
+    {
+        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( FunctionHandlerType, message, typeof( TOut ) );
 
-      Type closedHandlerType = StreamHandlerType.MakeGenericType( genericTypes.ToArray() );
-      MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
+        return (Task<TOut>) handleMethod.Invoke( handler, new object[] { message } )!;
+    }
 
-      if ( handleMethod is null )
-         throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, request.GetType() );
+    public IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> message, CancellationToken cancellationToken )
+    {
+        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( StreamHandlerType, message, typeof( TOut ) );
 
-      object streamHandler = services.GetRequiredService( closedHandlerType );
+        return (IAsyncEnumerable<TOut>) handleMethod.Invoke( handler, new object[] { message, cancellationToken } )!;
+    }
 
-      return (IAsyncEnumerable<TOut>) handleMethod.Invoke( streamHandler, new object[] { request, cancellationToken } )!;
-   }
+    public Task PublishAsync<TNotification>( TNotification notification )
+    {
+        (IReadOnlyList<object?> handlers, MethodInfo? handleMethod) = GetHandlers( NotificationHandlerType, notification );
 
-   public Task PublishAsync<TNotification>( TNotification notification )
-   {
-      Type notificationType = typeof(TNotification);
-      Type closedHandlerType = NotificationHandlerType.MakeGenericType( notificationType );
-      MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
+        return Task.WhenAll(
+            handlers.Where( handler => handler is not null )
+                    .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification! } )! )
+        );
+    }
 
-      if ( handleMethod is null )
-         throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, notificationType );
+    private (object handler, MethodInfo handleMethod) GetFirstHandler<TMessage>(
+        Type openHandlerType,
+        TMessage message,
+        Type? responseType = null )
+    {
+        (IReadOnlyList<object?> handlers, MethodInfo? handleMethod) = GetHandlers( openHandlerType, message, responseType );
 
-      IEnumerable<object?> notificationHandlers = services.GetServices( closedHandlerType );
+        if ( handlers.Count > 1 )
+        {
+            logger.LogWarning(
+                "More than one handler found for {MessageType} when calling {MethodName} - only invoking the first!",
+                message!.GetType(),
+                new StackFrame( 1 ).GetMethod()!.Name
+            );
+        }
 
-      List<Task> handlerTasks = notificationHandlers.Where( handler => handler is not null )
-                                                    .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification! } )! )
-                                                    .ToList();
+        return (handlers.First(), handleMethod)!;
+    }
 
-      return Task.WhenAll( handlerTasks );
-   }
+    private (IReadOnlyList<object?> handlers, MethodInfo handleMethod) GetHandlers<TMessage>(
+        Type openHandlerType,
+        TMessage message,
+        Type? responseType = null )
+    {
+        List<Type> genericTypes = new() { message!.GetType() };
 
-   // Executes handlers that either match an Action<in Tin> or Func<in TIn, out TOut> signature.
-   private Task ExecuteHandler( Type openHandlerType, IRequest message, Type? responseType = null )
-   {
-      List<Type> genericTypes = new() { message.GetType() };
+        if ( responseType is not null )
+            genericTypes.Add( responseType );
 
-      if ( responseType is not null )
-         genericTypes.Add( responseType );
+        Type closedHandlerType = openHandlerType.MakeGenericType( genericTypes.ToArray() );
+        MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
-      Type closedHandlerType = openHandlerType.MakeGenericType( genericTypes.ToArray() );
-      MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
+        if ( handleMethod is null )
+            throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
 
-      if ( handleMethod is null )
-         throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
-
-      object requestHandler = services.GetRequiredService( closedHandlerType );
-
-      return (Task) handleMethod.Invoke( requestHandler, new object[] { message } )!;
-   }
+        return (services.GetServices( closedHandlerType ).ToImmutableList(), handleMethod);
+    }
 }

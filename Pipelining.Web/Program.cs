@@ -9,16 +9,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddMediation( config =>
-{
-   config.AddHandler<WeatherRequestHandler>()
-         .AddHandler<SetSomethingHandler>();
+builder.Services.AddMediation(
+    config =>
+    {
+        config.AddHandler<WeatherRequestHandler>()
+              .AddHandler<SetSomethingHandler>();
 
-   config.AddStreamHandler<TemperatureStreamHandler>();
+        config.AddStreamHandler<TemperatureStreamHandler>()
+              .AddStreamHandler<OtherTempStreamHandler>();
 
-   config.AddNotificationHandler<FirstNotificationHandler>()
-         .AddNotificationHandler<SecondNotificationHandler>();
-} );
+        config.AddNotificationHandler<FirstNotificationHandler>()
+              .AddNotificationHandler<SecondNotificationHandler>();
+    }
+);
 
 WebApplication app = builder.Build();
 
@@ -26,8 +29,8 @@ WebApplication app = builder.Build();
 
 if ( app.Environment.IsDevelopment() )
 {
-   app.UseSwagger();
-   app.UseSwaggerUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

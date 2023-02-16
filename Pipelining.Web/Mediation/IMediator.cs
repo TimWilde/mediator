@@ -20,14 +20,14 @@ public interface IMediator
    Task DispatchAsync( IRequest message );
 
    /// <summary>
-   ///    Delivers <paramref name="request" /> to a single handler that streams back the response asynchronously
+   ///    Delivers <paramref name="message" /> to a single handler that streams back the response asynchronously
    /// </summary>
    /// <typeparam name="TOut">The type of the response streamed by the handler</typeparam>
-   /// <param name="request">The instance encapsulating the request</param>
+   /// <param name="message">The instance encapsulating the request</param>
    /// <param name="cancellationToken">Token propagating cancellation notifications</param>
    /// <returns>An asynchronous stream of TOut instances produced by the handler</returns>
    /// <exception cref="InvalidOperationException">A handler for the specified type is not registered</exception>
-   IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> request, CancellationToken cancellationToken );
+   IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> message, CancellationToken cancellationToken );
 
    /// <summary>
    ///    Sends a single <paramref name="notification" /> to all registered handlers for that type

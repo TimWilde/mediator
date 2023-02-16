@@ -17,3 +17,11 @@ public class TemperatureStreamHandler: IStreamHandler<TemperatureStreamRequest, 
       }
    }
 }
+
+public class OtherTempStreamHandler: IStreamHandler<TemperatureStreamRequest, int>
+{
+   public IAsyncEnumerable<int> Handle( TemperatureStreamRequest request, CancellationToken cancellationToken )
+   {
+      throw new NotImplementedException( "OtherTempStreamHandler.Handle" );
+   }
+}
