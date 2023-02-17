@@ -87,7 +87,7 @@ public class Mediator: IMediator
         MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
         if ( handleMethod is null )
-            throw RequestHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
+            throw MediatorHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
 
         return (services.GetServices( closedHandlerType ).ToImmutableList(), handleMethod);
     }

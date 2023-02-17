@@ -43,7 +43,7 @@ public static class MediationRegistrationExtensions
                                       typeof( THandler ).GetInterface( Mediator.ActionHandlerType.FullName! );
 
          if ( implementedInterface is null )
-            throw RequestHandlerConfigurationException.InvalidRequestHandler<THandler>();
+            throw MediatorHandlerConfigurationException.InvalidRequestHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
 
@@ -56,7 +56,7 @@ public static class MediationRegistrationExtensions
          Type? implementedInterface = typeof( THandler ).GetInterface( Mediator.StreamHandlerType.FullName! );
 
          if ( implementedInterface is null )
-            throw RequestHandlerConfigurationException.InvalidStreamHandler<THandler>();
+            throw MediatorHandlerConfigurationException.InvalidStreamHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
 
@@ -69,7 +69,7 @@ public static class MediationRegistrationExtensions
          Type? implementedInterface = typeof( THandler ).GetInterface( Mediator.NotificationHandlerType.FullName! );
 
          if ( implementedInterface is null )
-            throw RequestHandlerConfigurationException.InvalidNotificationHandler<THandler>();
+            throw MediatorHandlerConfigurationException.InvalidNotificationHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
 

@@ -1,19 +1,19 @@
 ﻿namespace Mediator.Web.Mediation.Implementation;
 
-public class RequestHandlerConfigurationException: Exception
+public class MediatorHandlerConfigurationException: Exception
 {
-   private RequestHandlerConfigurationException( string message ): base( message ) { }
+   private MediatorHandlerConfigurationException( string message ): base( message ) { }
 
-   public static RequestHandlerConfigurationException NoHandlerMethod( Type handlerType, Type messageType ) =>
+   public static MediatorHandlerConfigurationException NoHandlerMethod( Type handlerType, Type messageType ) =>
       new( $"The {handlerType.FullName} request handler does not handle messages of type {messageType.FullName}" );
 
-   public static RequestHandlerConfigurationException InvalidRequestHandler<THandler>() =>
+   public static MediatorHandlerConfigurationException InvalidRequestHandler<THandler>() =>
       new( $"{typeof( THandler ).FullName} does not implement either the mandatory {Mediator.FunctionHandlerType.FullName} " +
            $"or {Mediator.ActionHandlerType.FullName} interface" );
 
-   public static RequestHandlerConfigurationException InvalidStreamHandler<THandler>() =>
+   public static MediatorHandlerConfigurationException InvalidStreamHandler<THandler>() =>
       new( $"{typeof( THandler ).FullName} does not implement the mandatory {Mediator.StreamHandlerType.FullName} interface" );
 
-   public static RequestHandlerConfigurationException InvalidNotificationHandler<THandler>() =>
+   public static MediatorHandlerConfigurationException InvalidNotificationHandler<THandler>() =>
       new( $"{typeof( THandler ).FullName} does not implement the mandatory {Mediator.NotificationHandlerType.FullName} interface" );
 }
