@@ -1,7 +1,5 @@
 ﻿namespace Mediator.Web.Mediation.Implementation;
 
-using Messaging.Handlers;
-
 public class PipelineBuilder
 {
    private const int INPUT = 0,
@@ -25,60 +23,59 @@ public class PipelineBuilder
    {
       handlers.Reverse();
 
-      Type? nextStepWrapper = default;
-      Type? nextStepOutput = default;
+      Type? loopbackHandlerType = default;
+      Type? finalStepOutput = default;
 
       foreach( ( Type? handlerType, ServiceLifetime lifetime ) in handlers )
       {
          Type handlerInterface = handlerType.GetInterface( PipelineHandlerType.Name )!;
          Type[] genericArguments = handlerInterface.GetGenericArguments();
 
-         // Register the handler
-         services.Add( new ServiceDescriptor( handlerType, handlerType, lifetime ) );
-
-         // If there isn't a next step, use the loopback step
-         if( nextStepWrapper == default )
+         if( loopbackHandlerType == default )
          {
-            nextStepWrapper ??= LoopbackHandlerType.MakeGenericType( genericArguments[ OUTPUT ] );
-            nextStepOutput ??= genericArguments[ OUTPUT ];
+            finalStepOutput = genericArguments[ OUTPUT ];
+            loopbackHandlerType ??= LoopbackHandlerType.MakeGenericType( finalStepOutput );
 
-            Type nextStepInterface = StepWrapperInterfaceType.MakeGenericType( genericArguments[ OUTPUT ], genericArguments[ OUTPUT ] );
+            Type nextStepInterface = StepWrapperInterfaceType.MakeGenericType( finalStepOutput, finalStepOutput );
 
-            services.Add( new ServiceDescriptor( nextStepInterface, nextStepWrapper, ServiceLifetime.Singleton ) );
+            services.Add( new ServiceDescriptor( nextStepInterface, loopbackHandlerType, ServiceLifetime.Singleton ) );
          }
 
-         // Compose the step wrapper type definition
+         services.Add( new ServiceDescriptor( handlerType, handlerType, lifetime ) );
+
          Type stepWrapperType =
-            StepWrapperType.MakeGenericType( genericArguments[ INPUT ],
+            StepWrapperType.MakeGenericType( finalStepOutput!,
+                                             genericArguments[ INPUT ],
                                              genericArguments[ OUTPUT ],
-                                             nextStepOutput!,
                                              handlerType );
 
-         // Compose the step wrapper interface definition
          Type stepWrapperInterface =
-            StepWrapperInterfaceType.MakeGenericType( genericArguments[ INPUT ],
-                                                      nextStepOutput! );
+            StepWrapperInterfaceType.MakeGenericType( genericArguments[ INPUT ], finalStepOutput! );
 
-         // Register the wrapper
          services.Add( new ServiceDescriptor( stepWrapperInterface, stepWrapperType, lifetime ) );
       }
    }
 
-   private class PipelineStepWrapper<TIn, TOut, TNextOut, TStep>
-      : IStepWrapper<TIn, TNextOut>
-      where TStep: IPipelineRequestHandler<TIn, TOut>
+   public interface IStepWrapper<in TIn, TOut>
    {
-      private readonly IStepWrapper<TOut, TNextOut> nextStep;
+      Task<TOut> Process( TIn input, CancellationToken cancellationToken );
+   }
+
+   private class PipelineStepWrapper<TPipelineOutput, TStepInput, TStepOutput, TStep>
+      : IStepWrapper<TStepInput, TPipelineOutput>
+      where TStep: IPipelineRequestHandler<TStepInput, TStepOutput>
+   {
+      private readonly IStepWrapper<TStepOutput, TPipelineOutput> nextStepWrapper;
       private readonly TStep step;
 
-      public PipelineStepWrapper( TStep step, IStepWrapper<TOut, TNextOut> nextStep )
+      public PipelineStepWrapper( TStep step, IStepWrapper<TStepOutput, TPipelineOutput> nextStepWrapper )
       {
          this.step = step;
-         this.nextStep = nextStep;
+         this.nextStepWrapper = nextStepWrapper;
       }
 
-      public async Task<TNextOut> Process( TIn input, CancellationToken cancellationToken ) =>
-         await nextStep.Process( await step.Process( input, cancellationToken ), cancellationToken );
+      public async Task<TPipelineOutput> Process( TStepInput input, CancellationToken cancellationToken ) =>
+         await nextStepWrapper.Process( await step.Process( input, cancellationToken ), cancellationToken );
    }
 
    private class LoopbackStepWrapper<TIn>: IStepWrapper<TIn, TIn>

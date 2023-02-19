@@ -22,7 +22,8 @@ builder.Services.AddMediation( config =>
 
                                   config.AddPipeline( p => p.AddOperation<PipelineHandlers.StringToDateTime>()
                                                             .AddOperation<PipelineHandlers.DateTimeToDateOnly>()
-                                                            .AddOperation<PipelineHandlers.DateOnlyToDaysSince>() );
+                                                            .AddOperation<PipelineHandlers.DateOnlyToDaysSince>()
+                                                            .AddOperation<PipelineHandlers.BuildDaysSinceResponse>() );
                                } );
 
 WebApplication app = builder.Build();

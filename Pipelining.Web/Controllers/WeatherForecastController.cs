@@ -34,6 +34,6 @@ public class WeatherForecastController: ControllerBase
    }
 
    [ HttpGet( "/since" ) ]
-   public async Task<int> DaysSince( string dateText, CancellationToken cancellationToken ) =>
-      await mediator.Pipeline<string, int>( dateText, cancellationToken );
+   public async Task<DaysSinceResponse> DaysSince( string dateText, CancellationToken cancellationToken ) =>
+      await mediator.Pipeline<string, DaysSinceResponse>( dateText, cancellationToken );
 }

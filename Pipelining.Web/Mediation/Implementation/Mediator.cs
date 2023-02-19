@@ -24,7 +24,7 @@ public class Mediator: IMediator
    }
 
    public async Task<TOut> Pipeline<TIn, TOut>( TIn input, CancellationToken cancellationToken ) =>
-      await services.GetRequiredService<IStepWrapper<TIn, TOut>>()
+      await services.GetRequiredService<PipelineBuilder.IStepWrapper<TIn, TOut>>()
                     .Process( input, cancellationToken );
 
    public Task DispatchAsync( IRequest message )
