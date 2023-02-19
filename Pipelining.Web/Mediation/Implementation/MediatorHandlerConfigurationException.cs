@@ -8,8 +8,8 @@ public class MediatorHandlerConfigurationException: Exception
       new( $"The {handlerType.FullName} request handler does not handle messages of type {messageType.FullName}" );
 
    public static MediatorHandlerConfigurationException InvalidRequestHandler<THandler>() =>
-      new( $"{typeof( THandler ).FullName} does not implement either the mandatory {Mediator.FunctionHandlerType.FullName} " +
-           $"or {Mediator.ActionHandlerType.FullName} interface" );
+      new( $"{typeof( THandler ).FullName} does not implement either the mandatory {Mediator.ActionHandlerType.FullName} " +
+           $"or {Mediator.FunctionHandlerType.FullName} interface" );
 
    public static MediatorHandlerConfigurationException InvalidStreamHandler<THandler>() =>
       new( $"{typeof( THandler ).FullName} does not implement the mandatory {Mediator.StreamHandlerType.FullName} interface" );

@@ -41,4 +41,14 @@ public interface IMediator
    /// </remarks>
    /// <typeparam name="TNotification">The type of the message that will be published to all subscribers</typeparam>
    Task PublishAsync<TNotification>( TNotification notification );
+
+   /// <summary>
+   ///    Executes a pipeline of handlers that accepts a parameter of type TIn and ultimately produces a response of type TOut
+   /// </summary>
+   /// <typeparam name="TIn">the input type to the pipeline</typeparam>
+   /// <typeparam name="TOut">the final output of the pipeline</typeparam>
+   /// <param name="input">the parameter passed to the handler at the head of the pipeline</param>
+   /// <param name="cancellationToken">token passed to all handlers to facilitate cancellation</param>
+   /// <returns></returns>
+   Task<TOut> Pipeline<TIn, TOut>( TIn input, CancellationToken cancellationToken );
 }

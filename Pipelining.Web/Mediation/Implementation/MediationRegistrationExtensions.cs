@@ -2,6 +2,7 @@
 
 namespace Mediator.Web.Mediation.Implementation;
 
+using Messaging.Handlers;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 public static class MediationRegistrationExtensions
@@ -25,6 +26,8 @@ public static class MediationRegistrationExtensions
 
       IMediatorConfiguration AddNotificationHandler<THandler>( ServiceLifetime lifetime = ServiceLifetime.Transient )
          where THandler: INotificationHandler;
+
+      IMediatorConfiguration AddPipeline( Action<PipelineBuilder> build );
    }
 
    private class MediatorConfiguration: IMediatorConfiguration
@@ -42,7 +45,7 @@ public static class MediationRegistrationExtensions
          Type? implementedInterface = typeof( THandler ).GetInterface( Mediator.FunctionHandlerType.FullName! ) ??
                                       typeof( THandler ).GetInterface( Mediator.ActionHandlerType.FullName! );
 
-         if ( implementedInterface is null )
+         if( implementedInterface is null )
             throw MediatorHandlerConfigurationException.InvalidRequestHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
@@ -55,7 +58,7 @@ public static class MediationRegistrationExtensions
       {
          Type? implementedInterface = typeof( THandler ).GetInterface( Mediator.StreamHandlerType.FullName! );
 
-         if ( implementedInterface is null )
+         if( implementedInterface is null )
             throw MediatorHandlerConfigurationException.InvalidStreamHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
@@ -68,10 +71,21 @@ public static class MediationRegistrationExtensions
       {
          Type? implementedInterface = typeof( THandler ).GetInterface( Mediator.NotificationHandlerType.FullName! );
 
-         if ( implementedInterface is null )
+         if( implementedInterface is null )
             throw MediatorHandlerConfigurationException.InvalidNotificationHandler<THandler>();
 
          services.Add( new ServiceDescriptor( implementedInterface, typeof( THandler ), lifetime ) );
+
+         return this;
+      }
+
+      public IMediatorConfiguration AddPipeline( Action<PipelineBuilder> build )
+      {
+         var builder = new PipelineBuilder();
+
+         build( builder );
+
+         builder.Build( services );
 
          return this;
       }

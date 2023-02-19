@@ -7,88 +7,84 @@ using System.Reflection;
 [ DebuggerStepThrough ]
 public class Mediator: IMediator
 {
-    public static readonly Type FunctionHandlerType = typeof( IRequestHandler<,> );
-    public static readonly Type ActionHandlerType = typeof( IRequestHandler<> );
-    public static readonly Type StreamHandlerType = typeof( IStreamHandler<,> );
-    public static readonly Type NotificationHandlerType = typeof( INotificationHandler<> );
+   public static readonly Type FunctionHandlerType = typeof( IRequestHandler<,> );
+   public static readonly Type ActionHandlerType = typeof( IRequestHandler<> );
+   public static readonly Type StreamHandlerType = typeof( IStreamHandler<,> );
+   public static readonly Type NotificationHandlerType = typeof( INotificationHandler<> );
 
-    private static readonly string Handle = nameof( Handle );
+   private static readonly string Handle = nameof(Handle);
+   private readonly ILogger<Mediator> logger;
 
-    private readonly IServiceProvider services;
-    private readonly ILogger<Mediator> logger;
+   private readonly IServiceProvider services;
 
-    public Mediator( IServiceProvider services, ILogger<Mediator> logger )
-    {
-        this.services = services;
-        this.logger = logger;
-    }
+   public Mediator( IServiceProvider services, ILogger<Mediator> logger )
+   {
+      this.services = services;
+      this.logger = logger;
+   }
 
-    public Task DispatchAsync( IRequest message )
-    {
-        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( ActionHandlerType, message );
+   public async Task<TOut> Pipeline<TIn, TOut>( TIn input, CancellationToken cancellationToken ) =>
+      await services.GetRequiredService<IStepWrapper<TIn, TOut>>()
+                    .Process( input, cancellationToken );
 
-        return (Task) handleMethod.Invoke( handler, new object[] { message } )!;
-    }
+   public Task DispatchAsync( IRequest message )
+   {
+      ( object? handler, MethodInfo? handleMethod ) = GetFirstHandler( ActionHandlerType, message );
 
-    public Task<TOut> DispatchAsync<TOut>( IRequest<TOut> message )
-    {
-        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( FunctionHandlerType, message, typeof( TOut ) );
+      return (Task) handleMethod.Invoke( handler, new object[] { message } )!;
+   }
 
-        return (Task<TOut>) handleMethod.Invoke( handler, new object[] { message } )!;
-    }
+   public Task<TOut> DispatchAsync<TOut>( IRequest<TOut> message )
+   {
+      ( object? handler, MethodInfo? handleMethod ) = GetFirstHandler( FunctionHandlerType, message, typeof( TOut ) );
 
-    public IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> message, CancellationToken cancellationToken )
-    {
-        (object? handler, MethodInfo? handleMethod) = GetFirstHandler( StreamHandlerType, message, typeof( TOut ) );
+      return (Task<TOut>) handleMethod.Invoke( handler, new object[] { message } )!;
+   }
 
-        return (IAsyncEnumerable<TOut>) handleMethod.Invoke( handler, new object[] { message, cancellationToken } )!;
-    }
+   public IAsyncEnumerable<TOut> CreateStream<TOut>( IRequest<TOut> message, CancellationToken cancellationToken )
+   {
+      ( object? handler, MethodInfo? handleMethod ) = GetFirstHandler( StreamHandlerType, message, typeof( TOut ) );
 
-    public Task PublishAsync<TNotification>( TNotification notification )
-    {
-        (IReadOnlyList<object?> handlers, MethodInfo? handleMethod) = GetHandlers( NotificationHandlerType, notification );
+      return (IAsyncEnumerable<TOut>) handleMethod.Invoke( handler, new object[] { message, cancellationToken } )!;
+   }
 
-        return Task.WhenAll(
-            handlers.Where( handler => handler is not null )
-                    .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification! } )! )
-        );
-    }
+   public Task PublishAsync<TNotification>( TNotification notification )
+   {
+      ( IReadOnlyList<object?> handlers, MethodInfo? handleMethod ) = GetHandlers( NotificationHandlerType, notification );
 
-    private (object handler, MethodInfo handleMethod) GetFirstHandler<TMessage>(
-        Type openHandlerType,
-        TMessage message,
-        Type? responseType = null )
-    {
-        (IReadOnlyList<object?> handlers, MethodInfo? handleMethod) = GetHandlers( openHandlerType, message, responseType );
+      return Task.WhenAll( handlers.Where( handler => handler is not null )
+                                   .Select( handler => (Task) handleMethod.Invoke( handler, new object[] { notification! } )! ) );
+   }
 
-        if ( handlers.Count > 1 )
-        {
-            logger.LogWarning(
-                "More than one handler found for {MessageType} when calling {MethodName} - only invoking the first!",
-                message!.GetType(),
-                new StackFrame( 1 ).GetMethod()!.Name
-            );
-        }
+   private (object handler, MethodInfo handleMethod) GetFirstHandler<TMessage>( Type openHandlerType,
+                                                                                TMessage message,
+                                                                                Type? responseType = null )
+   {
+      ( IReadOnlyList<object?> handlers, MethodInfo? handleMethod ) = GetHandlers( openHandlerType, message, responseType );
 
-        return (handlers.First(), handleMethod)!;
-    }
+      if( handlers.Count > 1 )
+         logger.LogWarning( "More than one handler found for {MessageType} when calling {MethodName} - only invoking the first!",
+                            message!.GetType(),
+                            new StackFrame( 1 ).GetMethod()!.Name );
 
-    private (IReadOnlyList<object?> handlers, MethodInfo handleMethod) GetHandlers<TMessage>(
-        Type openHandlerType,
-        TMessage message,
-        Type? responseType = null )
-    {
-        List<Type> genericTypes = new() { message!.GetType() };
+      return ( handlers.First(), handleMethod )!;
+   }
 
-        if ( responseType is not null )
-            genericTypes.Add( responseType );
+   private (IReadOnlyList<object?> handlers, MethodInfo handleMethod) GetHandlers<TMessage>( Type openHandlerType,
+                                                                                             TMessage message,
+                                                                                             Type? responseType = null )
+   {
+      List<Type> genericTypes = new() { message!.GetType() };
 
-        Type closedHandlerType = openHandlerType.MakeGenericType( genericTypes.ToArray() );
-        MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
+      if( responseType is not null )
+         genericTypes.Add( responseType );
 
-        if ( handleMethod is null )
-            throw MediatorHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
+      Type closedHandlerType = openHandlerType.MakeGenericType( genericTypes.ToArray() );
+      MethodInfo? handleMethod = closedHandlerType.GetMethod( Handle, BindingFlags.Public | BindingFlags.Instance );
 
-        return (services.GetServices( closedHandlerType ).ToImmutableList(), handleMethod);
-    }
+      if( handleMethod is null )
+         throw MediatorHandlerConfigurationException.NoHandlerMethod( closedHandlerType, message.GetType() );
+
+      return ( services.GetServices( closedHandlerType ).ToImmutableList(), handleMethod );
+   }
 }

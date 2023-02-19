@@ -9,28 +9,30 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddMediation(
-    config =>
-    {
-        config.AddHandler<WeatherRequestHandler>()
-              .AddHandler<SetSomethingHandler>();
+builder.Services.AddMediation( config =>
+                               {
+                                  config.AddHandler<RequestHandlers.WeatherRequestHandler>()
+                                        .AddHandler<RequestHandlers.SetSomethingHandler>();
 
-        config.AddStreamHandler<TemperatureStreamHandler>()
-              .AddStreamHandler<OtherTempStreamHandler>();
+                                  config.AddStreamHandler<StreamHandlers.TemperatureStreamHandler>()
+                                        .AddStreamHandler<StreamHandlers.OtherTempStreamHandler>();
 
-        config.AddNotificationHandler<FirstNotificationHandler>()
-              .AddNotificationHandler<SecondNotificationHandler>();
-    }
-);
+                                  config.AddNotificationHandler<NotificationHandlers.FirstNotificationHandler>()
+                                        .AddNotificationHandler<NotificationHandlers.SecondNotificationHandler>();
+
+                                  config.AddPipeline( p => p.AddOperation<PipelineHandlers.StringToDateTime>()
+                                                            .AddOperation<PipelineHandlers.DateTimeToDateOnly>()
+                                                            .AddOperation<PipelineHandlers.DateOnlyToDaysSince>() );
+                               } );
 
 WebApplication app = builder.Build();
 
 // -- Configure the request pipeline.
 
-if ( app.Environment.IsDevelopment() )
+if( app.Environment.IsDevelopment() )
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+   app.UseSwagger();
+   app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

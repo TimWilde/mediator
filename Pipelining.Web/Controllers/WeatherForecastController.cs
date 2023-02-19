@@ -4,7 +4,8 @@ using Mediation;
 using Messaging;
 using Microsoft.AspNetCore.Mvc;
 
-[ ApiController, Route( "[controller]" ) ]
+[ ApiController ]
+[ Route( "[controller]" ) ]
 public class WeatherForecastController: ControllerBase
 {
    private readonly IMediator mediator;
@@ -31,4 +32,8 @@ public class WeatherForecastController: ControllerBase
       await mediator.PublishAsync( new DemoNotification() );
       return NoContent();
    }
+
+   [ HttpGet( "/since" ) ]
+   public async Task<int> DaysSince( string dateText, CancellationToken cancellationToken ) =>
+      await mediator.Pipeline<string, int>( dateText, cancellationToken );
 }
